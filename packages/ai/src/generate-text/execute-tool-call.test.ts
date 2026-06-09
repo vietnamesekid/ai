@@ -1192,7 +1192,7 @@ describe('executeToolCall', () => {
         messages: [],
         abortSignal: undefined,
         toolsContext: {},
-        onToolExecutionStart: async () => ({ error: 'Quota exceeded' }),
+        onToolExecutionStart: async () => ({ deny: 'Quota exceeded' }),
       });
 
       expect(executed).toEqual([]);
@@ -1219,7 +1219,7 @@ describe('executeToolCall', () => {
         messages: [],
         abortSignal: undefined,
         toolsContext: {},
-        onToolExecutionStart: async () => ({ error: 'Permission denied' }),
+        onToolExecutionStart: async () => ({ deny: 'Permission denied' }),
         onToolExecutionEnd: async event => {
           endEvents.push(event);
         },
@@ -1251,7 +1251,7 @@ describe('executeToolCall', () => {
         onToolExecutionStart: [
           async () => {
             called.push('first');
-            return { error: 'denied by first' };
+            return { deny: 'denied by first' };
           },
           async () => {
             called.push('second');
@@ -1290,7 +1290,7 @@ describe('executeToolCall', () => {
           },
           async () => {
             called.push('second');
-            return { error: 'denied by second' };
+            return { deny: 'denied by second' };
           },
         ],
       });

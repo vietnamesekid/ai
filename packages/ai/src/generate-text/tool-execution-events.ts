@@ -139,7 +139,7 @@ export type ToolExecutionEndEvent<TOOLS extends ToolSet = ToolSet> = [
  * The SDK will skip `tool.execute()` and send this error back to the model as a
  * tool result, allowing the model to respond gracefully instead of aborting the stream.
  */
-export type ToolExecutionDenial = { error: string };
+export type ToolExecutionDenial = { deny: string };
 
 /**
  * Callback that is set using the `onToolExecutionStart` option.
@@ -147,7 +147,7 @@ export type ToolExecutionDenial = { error: string };
  * Called when a tool execution begins, before the tool's `execute` function is invoked.
  * Use this for logging tool invocations, tracking tool usage, or pre-execution validation.
  *
- * Returning a `ToolExecutionDenial` object (e.g. `{ error: 'Quota exceeded' }`) will
+ * Returning a `ToolExecutionDenial` object (e.g. `{ deny: 'Quota exceeded' }`) will
  * deny the tool call: the SDK skips execution and sends the error to the model as a
  * tool result. Returning `void` or `undefined` proceeds with normal execution.
  *

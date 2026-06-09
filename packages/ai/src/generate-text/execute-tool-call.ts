@@ -106,13 +106,13 @@ export async function executeToolCall<TOOLS extends ToolSet>({
     callbacks: onToolExecutionStart,
   });
 
-  if (denial?.error != null) {
+  if (denial?.deny != null) {
     const toolError = {
       type: 'tool-error',
       toolCallId,
       toolName,
       input,
-      error: new Error(denial.error),
+      error: new Error(denial.deny),
       dynamic: tool.type === 'dynamic',
       ...(toolCall.providerMetadata != null
         ? { providerMetadata: toolCall.providerMetadata }
