@@ -11,8 +11,8 @@ import type {
 import type { Output } from './output';
 import { createRestrictedTelemetryDispatcher } from './restricted-telemetry-dispatcher';
 import type {
+  OnToolExecutionStartCallback,
   ToolExecutionEndEvent,
-  ToolExecutionStartEvent,
 } from './tool-execution-events';
 
 describe('createRestrictedTelemetryDispatcher types', () => {
@@ -71,7 +71,7 @@ describe('createRestrictedTelemetryDispatcher types', () => {
     });
 
     expectTypeOf(telemetryDispatcher.onToolExecutionStart).toMatchTypeOf<
-      Callback<ToolExecutionStartEvent<Tools>> | undefined
+      OnToolExecutionStartCallback<Tools> | undefined
     >();
     expectTypeOf(telemetryDispatcher.onToolExecutionEnd).toMatchTypeOf<
       Callback<ToolExecutionEndEvent<Tools>> | undefined

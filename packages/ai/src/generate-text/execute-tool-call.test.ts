@@ -1173,6 +1173,158 @@ describe('executeToolCall', () => {
     });
   });
 
+  describe('onToolExecutionStart denial', () => {
+    it('should skip tool execution and return tool-error when callback returns denial', async () => {
+      const executed: string[] = [];
+
+      const result = await executeToolCall({
+        toolCall: createToolCall(),
+        tools: {
+          testTool: tool({
+            inputSchema: z.object({ value: z.string() }),
+            execute: async ({ value }) => {
+              executed.push('execute');
+              return `${value}-result`;
+            },
+          }),
+        },
+        callId: 'test-telemetry-call-id',
+        messages: [],
+        abortSignal: undefined,
+        toolsContext: {},
+        onToolExecutionStart: async () => ({ error: 'Quota exceeded' }),
+      });
+
+      expect(executed).toEqual([]);
+      expect(result?.output).toMatchObject({
+        type: 'tool-error',
+        toolCallId: 'call-1',
+        toolName: 'testTool',
+        error: new Error('Quota exceeded'),
+      });
+    });
+
+    it('should call onToolExecutionEnd with the denial error', async () => {
+      const endEvents: ToolExecutionEndEvent<any>[] = [];
+
+      await executeToolCall({
+        toolCall: createToolCall(),
+        tools: {
+          testTool: tool({
+            inputSchema: z.object({ value: z.string() }),
+            execute: async ({ value }) => `${value}-result`,
+          }),
+        },
+        callId: 'test-telemetry-call-id',
+        messages: [],
+        abortSignal: undefined,
+        toolsContext: {},
+        onToolExecutionStart: async () => ({ error: 'Permission denied' }),
+        onToolExecutionEnd: async event => {
+          endEvents.push(event);
+        },
+      });
+
+      expect(endEvents).toHaveLength(1);
+      expect(endEvents[0].toolOutput).toMatchObject({
+        type: 'tool-error',
+        error: new Error('Permission denied'),
+      });
+      expect(endEvents[0].toolExecutionMs).toBe(0);
+    });
+
+    it('should use first denial from array of callbacks and stop checking', async () => {
+      const called: string[] = [];
+
+      const result = await executeToolCall({
+        toolCall: createToolCall(),
+        tools: {
+          testTool: tool({
+            inputSchema: z.object({ value: z.string() }),
+            execute: async ({ value }) => `${value}-result`,
+          }),
+        },
+        callId: 'test-telemetry-call-id',
+        messages: [],
+        abortSignal: undefined,
+        toolsContext: {},
+        onToolExecutionStart: [
+          async () => {
+            called.push('first');
+            return { error: 'denied by first' };
+          },
+          async () => {
+            called.push('second');
+          },
+        ],
+      });
+
+      expect(called).toEqual(['first']);
+      expect(result?.output).toMatchObject({
+        type: 'tool-error',
+        error: new Error('denied by first'),
+      });
+    });
+
+    it('should proceed with execution when first callback passes and second denies', async () => {
+      const called: string[] = [];
+
+      const result = await executeToolCall({
+        toolCall: createToolCall(),
+        tools: {
+          testTool: tool({
+            inputSchema: z.object({ value: z.string() }),
+            execute: async ({ value }) => {
+              called.push('execute');
+              return `${value}-result`;
+            },
+          }),
+        },
+        callId: 'test-telemetry-call-id',
+        messages: [],
+        abortSignal: undefined,
+        toolsContext: {},
+        onToolExecutionStart: [
+          async () => {
+            called.push('first');
+          },
+          async () => {
+            called.push('second');
+            return { error: 'denied by second' };
+          },
+        ],
+      });
+
+      expect(called).toEqual(['first', 'second']);
+      expect(result?.output).toMatchObject({
+        type: 'tool-error',
+        error: new Error('denied by second'),
+      });
+    });
+
+    it('should proceed normally when callback returns void', async () => {
+      const result = await executeToolCall({
+        toolCall: createToolCall(),
+        tools: {
+          testTool: tool({
+            inputSchema: z.object({ value: z.string() }),
+            execute: async ({ value }) => `${value}-result`,
+          }),
+        },
+        callId: 'test-telemetry-call-id',
+        messages: [],
+        abortSignal: undefined,
+        toolsContext: {},
+        onToolExecutionStart: async () => {},
+      });
+
+      expect(result?.output).toMatchObject({
+        type: 'tool-result',
+        output: 'test-result',
+      });
+    });
+  });
+
   describe('array callbacks', () => {
     it('should call all onToolExecutionStart listeners in an array', async () => {
       const calls: string[] = [];

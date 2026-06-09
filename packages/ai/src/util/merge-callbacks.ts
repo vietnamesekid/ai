@@ -1,4 +1,4 @@
-import type { Callback } from '../util/callback';
+type AnyCallback<EVENT> = (event: EVENT) => PromiseLike<unknown> | unknown;
 
 /**
  * Creates an async callback that invokes the provided callbacks in parallel.
@@ -10,8 +10,8 @@ import type { Callback } from '../util/callback';
  * them to settle.
  */
 export function mergeCallbacks<EVENT>(
-  ...callbacks: Array<Callback<EVENT> | undefined>
-): Callback<EVENT> {
+  ...callbacks: Array<AnyCallback<EVENT> | undefined>
+): AnyCallback<EVENT> {
   return async (event: EVENT) => {
     await Promise.allSettled(
       callbacks.map(async callback => {
