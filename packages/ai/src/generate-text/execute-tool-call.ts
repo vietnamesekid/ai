@@ -13,13 +13,14 @@ import {
   type TimeoutConfiguration,
 } from '../prompt/request-options';
 import { mergeAbortSignals } from '../util/merge-abort-signals';
-import { notify } from '../util/notify';
+import { notify, notifyWithResult } from '../util/notify';
 import { now } from '../util/now';
 import type { TypedToolCall } from './tool-call';
 import type { TypedToolError } from './tool-error';
 import type {
   OnToolExecutionEndCallback,
   OnToolExecutionStartCallback,
+  ToolExecutionDenial,
   ToolExecutionEndEvent,
   ToolExecutionStartEvent,
 } from './tool-execution-events';
@@ -97,10 +98,41 @@ export async function executeToolCall<TOOLS extends ToolSet>({
 
   let output: unknown;
 
-  await notify({
+  const denial = await notifyWithResult<
+    ToolExecutionStartEvent<TOOLS>,
+    ToolExecutionDenial
+  >({
     event: baseCallbackEvent as ToolExecutionStartEvent<TOOLS>,
     callbacks: onToolExecutionStart,
   });
+
+  if (denial?.error != null) {
+    const toolError = {
+      type: 'tool-error',
+      toolCallId,
+      toolName,
+      input,
+      error: new Error(denial.error),
+      dynamic: tool.type === 'dynamic',
+      ...(toolCall.providerMetadata != null
+        ? { providerMetadata: toolCall.providerMetadata }
+        : {}),
+      ...(toolCall.toolMetadata != null
+        ? { toolMetadata: toolCall.toolMetadata }
+        : {}),
+    } as TypedToolError<TOOLS>;
+
+    await notify({
+      event: {
+        ...baseCallbackEvent,
+        toolOutput: toolError,
+        toolExecutionMs: 0,
+      } as ToolExecutionEndEvent<TOOLS>,
+      callbacks: onToolExecutionEnd,
+    });
+
+    return { output: toolError, toolExecutionMs: 0 };
+  }
 
   const toolTimeoutMs = getToolTimeoutMs<TOOLS>(timeout, toolName);
   const toolAbortSignal = mergeAbortSignals(abortSignal, toolTimeoutMs);

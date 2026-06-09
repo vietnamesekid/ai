@@ -135,15 +135,27 @@ export type ToolExecutionEndEvent<TOOLS extends ToolSet = ToolSet> = [
   : StaticToolExecutionEndEvent<TOOLS> | DynamicToolExecutionEndEvent<TOOLS>;
 
 /**
+ * Return this from `onToolExecutionStart` to deny a tool call before execution.
+ * The SDK will skip `tool.execute()` and send this error back to the model as a
+ * tool result, allowing the model to respond gracefully instead of aborting the stream.
+ */
+export type ToolExecutionDenial = { error: string };
+
+/**
  * Callback that is set using the `onToolExecutionStart` option.
  *
  * Called when a tool execution begins, before the tool's `execute` function is invoked.
  * Use this for logging tool invocations, tracking tool usage, or pre-execution validation.
  *
+ * Returning a `ToolExecutionDenial` object (e.g. `{ error: 'Quota exceeded' }`) will
+ * deny the tool call: the SDK skips execution and sends the error to the model as a
+ * tool result. Returning `void` or `undefined` proceeds with normal execution.
+ *
  * @param event - The event object containing tool call information.
  */
-export type OnToolExecutionStartCallback<TOOLS extends ToolSet = ToolSet> =
-  Callback<ToolExecutionStartEvent<TOOLS>>;
+export type OnToolExecutionStartCallback<TOOLS extends ToolSet = ToolSet> = (
+  event: ToolExecutionStartEvent<TOOLS>,
+) => PromiseLike<ToolExecutionDenial | void> | ToolExecutionDenial | void;
 
 /**
  * Callback that is set using the `onToolExecutionEnd` option.
